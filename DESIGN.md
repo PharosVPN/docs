@@ -100,8 +100,9 @@ tunnel. Embedded and remote are transport differences only — identical trust.
 - **Outbound control loop** — holds a long-lived mTLS/gRPC connection to each
   `buoy`; pushes config, pushes/revokes peers, and *receives a live event
   stream* (see §7).
-- **Cloud-provider integration** — Start/Stop/Describe nodes behind a
-  `CloudProvider` interface. GCP implemented first; interface from day one.
+- **Node onboarding over SSH** — installs and updates the `buoy` agent on
+  operator-provided VMs over SSH; all node *control* is gRPC. See §5. helm
+  does not call cloud-provider APIs — the operator creates the VM.
 - **Issues** node certs, the controller's own client cert, relay certs, and
   per-user/device certs. Holds the CA. See §4.
 - **Embedded `beacon`** and the reverse-tunnel dialer for remote `beacon`s.
@@ -116,7 +117,8 @@ tunnel. Embedded and remote are transport differences only — identical trust.
 - **Control port** (mTLS-only, gRPC). Operations: status, metrics, push config,
   add/remove peer (live, no restart), handshake stats, restart service, and a
   **server-stream of live events** back to `helm`.
-- **No SSH dependency.** The agent replaces everything previously done over SSH.
+- **SSH is install-only.** `helm` reaches a node over SSH solely to install and
+  update the `buoy` agent; every operational instruction is gRPC.
 - **Cold-start resilient.** Comes up from disk every boot using the last config
   `helm` pushed. Controller offline ⇒ existing peers keep working.
 
@@ -159,7 +161,7 @@ SQLite, never copied off the controller. Two intermediates under it:
 | Node server cert | Fleet CA | each `buoy` | 1 year, auto-rotated by push |
 | Relay cert | Fleet CA | each `beacon` | 1 year, auto-rotated |
 | Device leaf | Device CA | each `caravel` / browser | 1 year |
-| Bootstrap token | `helm` | new `buoy`/`beacon`, one-time | 24 hours |
+| helm SSH key | `helm` (self) | `helm` | long-lived, for agent deploy |
 
 **Compromise containment:**
 - Compromised `buoy` → attacker gets that node's key + the CA *cert* (not key).
@@ -174,23 +176,30 @@ SQLite, never copied off the controller. Two intermediates under it:
 
 ## 5. Bootstrap & enrollment
 
-**Node enrollment** — `helm nodes enroll <region>`:
-1. Operator provisions the cloud VM (Terraform / built-in cloud integration).
-   Cloud-init installs the `buoy` binary, started in *enrollment mode*: listens
-   on the control port, accepts only a one-time **bootstrap token**.
-2. `helm` generates a node keypair, signs it with the Fleet CA, generates a
-   one-time token, connects to the node, sends `{token, ca_cert, node_cert,
-   node_key}`.
-3. `buoy` verifies the token, writes the files, drops out of enrollment mode,
-   restarts in normal mTLS-required mode.
+**Node enrollment** — `helm nodes add <ssh-host>`:
+1. The operator creates a VM on any provider and adds `helm`'s SSH **public
+   key** (printed by `helm ssh-key`) to its `authorized_keys`. `helm` has its
+   own SSH keypair, generated on first run and stored in SQLite.
+2. `helm` connects out over SSH, pins the host key on first use (TOFU), and
+   installs the `buoy` agent — either by uploading a bundled binary or running
+   a one-line download.
+3. `buoy` generates its own keypair **on the node** and emits a CSR. `helm`
+   pulls the CSR back over SSH, signs it with the Fleet CA, and pushes the
+   certificate plus the CA back. The node's private key never leaves the node
+   and `helm` never holds it.
+4. `helm` starts the `buoy` service. From here every instruction is gRPC.
 
-**Relay enrollment** — same pattern for a remote `beacon`.
+SSH is a *deployment* channel only — install and update of the agent. There is
+no enrollment-mode listener and no one-time bootstrap token; the trusted SSH
+channel replaces both.
+
+**Relay enrollment** — same SSH pattern for a remote `beacon`.
 
 **User / device enrollment** — a user is given an **enrollment ticket** (QR or
 deep link, see §9). `caravel` scans it, contacts `beacon`→`helm`, the device
 generates a keypair, `helm` issues a Device-CA leaf, and the device is bound to
-the user account. The bootstrap token is the only moment of weakness: short TTL,
-one-use, scoped.
+the user account. The enrollment ticket is the only moment of weakness: short
+TTL, one-use, scoped.
 
 ---
 
@@ -339,9 +348,10 @@ client. `.pharos` is *our* format and is not asked to do that job.
 
 Single SQLite database on `helm` (`state/app.db`), Goose migrations.
 
-Tables: `nodes`, `profiles`, `users`, `devices`, `peers`, `admins`, `sessions`,
-`node_certs`, `device_certs`, `bootstrap_tokens`, `audit_log`, `metrics_samples`,
-`relays`. **Every mutable row carries `version INTEGER` and `updated_at`** for
+Tables: `ca` (the root + intermediate CAs, §4), `nodes`, `profiles`, `users`,
+`devices`, `peers`, `admins`, `sessions`, `node_certs`, `device_certs`,
+`bootstrap_tokens`, `audit_log`, `metrics_samples`, `relays`. **Every mutable
+row carries `version INTEGER` and `updated_at`** for
 §7 optimistic concurrency. YAML projections under `state/snapshots/` continue
 for git-friendly diffs. `buoy` and `beacon` have no database.
 
@@ -426,10 +436,10 @@ and device-CA machinery from the private `sultix` project (same owner). All
 | 11 | Protocols: versioned tagged list, ignore-unknown. | 2026-05-17 |
 | 12 | QR: enrollment ticket default; self-contained QR for offline. | 2026-05-17 |
 | 13 | Reuse + rebrand `sultix` relay/tunnel/device-CA code. | 2026-05-17 |
+| 14 | Node/relay onboarding over SSH (agent install + update); no cloud-provider API. Node keys are generated on-node and signed via CSR; no bootstrap token. Supersedes the §3 `CloudProvider` interface. | 2026-05-18 |
 
 ### Still open
 
-- Cloud providers beyond GCP (interface from day one; only GCP implemented v1).
 - `caravel`: native per-platform vs Kotlin Multiplatform — decide in `caravel/BUILD.md`.
 - Whether protobuf contracts graduate from `docs/proto/` to a dedicated repo.
 - Metrics export: built-in dashboard only, or also Prometheus push.
