@@ -122,6 +122,32 @@ tunnel. Embedded and remote are transport differences only — identical trust.
 - **Cold-start resilient.** Comes up from disk every boot using the last config
   `helm` pushed. Controller offline ⇒ existing peers keep working.
 
+#### Node network policy
+
+Each node carries a **network policy** the operator sets per `buoy` from the
+admin UI — three independent toggles `helm` pushes over the control channel:
+
+| Toggle | Effect |
+|---|---|
+| **Forwarding** | route client traffic onward; off ⇒ the node is a dead end |
+| **Masquerade** | source-NAT client traffic to the node's IP; off ⇒ the destination sees the client's tunnel IP (internal-resource VPNs want this) |
+| **Client isolation** | drop client-to-client forwarded traffic; off ⇒ clients route peer-to-peer |
+
+Masquerade and isolation require forwarding. The toggles translate to a
+**canonical `PostUp` / `PostDown` rule set** — `helm` generates it, shows it
+read-only in an advanced UI panel, and pushes the policy; `buoy` applies the
+same set (egress interface autodetected):
+
+```
+forwarding   iptables -A FORWARD -i %i -j ACCEPT;  -A FORWARD -o %i -j ACCEPT
+             sysctl net.ipv4/ipv6 ... forwarding = 1
+masquerade   iptables -t nat -A POSTROUTING -o <egress> -j MASQUERADE
+isolation    iptables -I FORWARD 1 -i %i -o %i -j DROP
+```
+
+`PostDown` removes each with the matching `-D`. The rule set is the contract:
+`helm`'s preview and `buoy`'s application must not drift.
+
 ### beacon (relay)
 
 - **Stateless public proxy.** Terminates client mTLS, forwards gRPC streams to
@@ -446,6 +472,7 @@ and device-CA machinery from the private `sultix` project (same owner). All
 | 13 | Reuse + rebrand `sultix` relay/tunnel/device-CA code. | 2026-05-17 |
 | 14 | Node/relay onboarding over SSH (agent install + update); no cloud-provider API. Node keys are generated on-node and signed via CSR; no bootstrap token. Supersedes the §3 `CloudProvider` interface. | 2026-05-18 |
 | 15 | Per-peer 256-bit AmneziaWG preshared keys, for post-quantum (harvest-now-decrypt-later) hardening of the data plane. See §4. | 2026-05-19 |
+| 16 | Per-node network policy — forwarding / masquerade / client-isolation toggles, set per `buoy` from the admin UI. See §3. | 2026-05-19 |
 
 ### Still open
 

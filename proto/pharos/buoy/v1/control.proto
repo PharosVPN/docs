@@ -39,6 +39,10 @@ service NodeControl {
   // RestartService is a last-resort restart of one protocol's service.
   rpc RestartService(RestartServiceRequest) returns (RestartServiceResponse);
 
+  // SetNetworkConfig applies the node's forwarding / masquerade / isolation
+  // policy (DESIGN §3, decision 16).
+  rpc SetNetworkConfig(SetNetworkConfigRequest) returns (SetNetworkConfigResponse);
+
   // WatchEvents is a server-stream of live node events. helm holds it open;
   // this is what makes the admin UI live (DESIGN §7, helm milestone M4).
   rpc WatchEvents(WatchEventsRequest) returns (stream Event);
@@ -113,6 +117,25 @@ message PushConfigRequest {
 message PushConfigResponse {
   int64 applied_revision = 1;
   bool reloaded = 2;
+}
+
+// NetworkConfig is a node's traffic-handling policy (DESIGN §3, decision 16).
+// masquerade and isolation are only meaningful when forwarding is enabled.
+message NetworkConfig {
+  // forwarding routes client traffic onward (kernel IP forwarding).
+  bool forwarding = 1;
+  // masquerade source-NATs forwarded traffic to the node's address.
+  bool masquerade = 2;
+  // isolation drops client-to-client forwarded traffic.
+  bool isolation = 3;
+}
+
+message SetNetworkConfigRequest {
+  NetworkConfig config = 1;
+}
+
+message SetNetworkConfigResponse {
+  bool applied = 1;
 }
 
 message AddPeerRequest {
