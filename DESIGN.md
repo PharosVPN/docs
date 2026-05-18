@@ -172,6 +172,14 @@ SQLite, never copied off the controller. Two intermediates under it:
   user **profiles remain encrypted** (the controller never holds users' private
   keys in usable form, §8). Hence `helm`'s "no inbound ports, behind NAT" posture.
 
+**Post-quantum hardening.** Every AmneziaWG peer is issued a unique 256-bit
+**preshared key**, mixed into the WireGuard handshake. WireGuard's ECDH
+(Curve25519) is quantum-vulnerable; the symmetric PSK is not — so recorded
+tunnel traffic stays confidential against a future *harvest-now-decrypt-later*
+attacker. `helm` generates the PSK per peer, ships it inside the E2E profile
+bundle (§8), and pushes it to `buoy`. This is a pragmatic interim measure, not
+a full post-quantum handshake.
+
 ---
 
 ## 5. Bootstrap & enrollment
@@ -437,6 +445,7 @@ and device-CA machinery from the private `sultix` project (same owner). All
 | 12 | QR: enrollment ticket default; self-contained QR for offline. | 2026-05-17 |
 | 13 | Reuse + rebrand `sultix` relay/tunnel/device-CA code. | 2026-05-17 |
 | 14 | Node/relay onboarding over SSH (agent install + update); no cloud-provider API. Node keys are generated on-node and signed via CSR; no bootstrap token. Supersedes the §3 `CloudProvider` interface. | 2026-05-18 |
+| 15 | Per-peer 256-bit AmneziaWG preshared keys, for post-quantum (harvest-now-decrypt-later) hardening of the data plane. See §4. | 2026-05-19 |
 
 ### Still open
 
