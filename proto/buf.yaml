@@ -4,6 +4,13 @@ modules:
 lint:
   use:
     - STANDARD
+  except:
+    # PeerResponse is intentionally shared by AddPeer and RemovePeer — they
+    # return the same shape, and forcing two identical messages is pure
+    # ceremony. Event is the semantic name for the WatchEvents stream message.
+    # Both are deliberate API choices; these standard naming rules do not fit.
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_RESPONSE_STANDARD_NAME
 breaking:
   use:
     - FILE
