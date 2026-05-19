@@ -66,8 +66,10 @@ message Peer {
   repeated string allowed_ips = 4;
   // preshared_key is optional (AmneziaWG).
   string preshared_key = 5;
-  // endpoint is an optional fixed peer endpoint.
-  string endpoint = 6;
+  // endpoints are the peer's addresses. Always an array — multiple entries
+  // support endpoint diversity and rotation (DESIGN §3, decision 17); a
+  // single address is still a one-element array.
+  repeated string endpoints = 6;
 }
 
 // PeerState is a Peer plus its runtime state on the node.

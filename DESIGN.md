@@ -148,6 +148,27 @@ isolation    iptables -I FORWARD 1 -i %i -o %i -j DROP
 `PostDown` removes each with the matching `-D`. The rule set is the contract:
 `helm`'s preview and `buoy`'s application must not drift.
 
+#### Endpoint diversity & rotation
+
+A node does not expose a single address. It accepts AmneziaWG on a **set of
+public IPs** and a **UDP port range**, yielding a large pool of reachable
+`(ip, port)` endpoints from a small config (`buoy` binds the IPs and DNATs the
+port range onto the WireGuard listener). A profile carries that pool plus a
+**rotation policy** — `{ enabled, interval, jitter }`. The client picks a
+random endpoint and, when rotation is enabled, re-picks every
+`interval ± jitter`, updating the WireGuard peer endpoint live (WireGuard peers
+roam by design, so this costs nothing).
+
+The purpose is **anti-correlation**. When every member of an organisation
+always reaches the same `ip:port`, a network observer clusters them by
+endpoint — same endpoint, same affiliation. A random, rotating endpoint per
+client removes that stable signal without touching the tunnel crypto. Rotation
+defaults **off for `--personal`** (a lone operator gains nothing from it) and
+**on for `--enterprise`**; operator-overridable either way.
+
+Endpoints are always represented as an **array**, even when a node has a single
+`ip:port` — there is no singular-endpoint form.
+
 ### beacon (relay)
 
 - **Stateless public proxy.** Terminates client mTLS, forwards gRPC streams to
@@ -420,6 +441,7 @@ Same binaries, two presets at `helm init`:
 | Audit retention | 30 days | 1 year |
 | Metrics retention | 7 days | 90 days |
 | REALITY decoy site | `www.microsoft.com` | configurable, rotated |
+| Endpoint rotation | off | on (anti-correlation, §3) |
 
 ---
 
@@ -473,6 +495,7 @@ and device-CA machinery from the private `sultix` project (same owner). All
 | 14 | Node/relay onboarding over SSH (agent install + update); no cloud-provider API. Node keys are generated on-node and signed via CSR; no bootstrap token. Supersedes the §3 `CloudProvider` interface. | 2026-05-18 |
 | 15 | Per-peer 256-bit AmneziaWG preshared keys, for post-quantum (harvest-now-decrypt-later) hardening of the data plane. See §4. | 2026-05-19 |
 | 16 | Per-node network policy — forwarding / masquerade / client-isolation toggles, set per `buoy` from the admin UI. See §3. | 2026-05-19 |
+| 17 | Multi-IP/port node endpoints + client-side endpoint rotation, for anti-correlation. Endpoints are always an array. Rotation default off (personal) / on (enterprise). See §3. | 2026-05-19 |
 
 ### Still open
 
