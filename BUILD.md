@@ -35,12 +35,11 @@ subproject must read, in order: this file → `docs/DESIGN.md` → the subprojec
 
 ## 4. Reused code — rebrand obligation
 
-`buoy` and `beacon` lift the reverse-tunnel, transparent-proxy, and device-CA
-machinery from the private `sultix` project (`/Users/khalefa/Projects/sultix.ai/sultix`,
-same owner). When lifting:
+`buoy` and `beacon` adapt the reverse-tunnel, transparent-proxy, and device-CA
+machinery the operator wrote for an earlier private project. When adapting it:
 
-- Strip **every** `sultix`, `mcproxy`, `mctunnel`, `x-sultix-*` identifier —
-  package names, import paths, type names, metadata keys, comments, file names.
+- Strip **every** identifier from the origin project — package names, import
+  paths, type names, metadata keys, comments, file names.
 - The new repo must contain **zero trace** of the origin project.
 - Re-license headers to AGPL-3.0 (see §6).
 

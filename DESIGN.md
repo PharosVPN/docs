@@ -469,9 +469,10 @@ Same binaries, two presets at `helm init`:
 | `caravel` | Mobile client | native (Kotlin / Swift) | subagent |
 | `.github` | Org profile | Markdown | core |
 
-`buoy` and `beacon` lift and **rebrand** the reverse-tunnel, transparent-proxy,
-and device-CA machinery from the private `sultix` project (same owner). All
-`sultix` / `mcproxy` / `mctunnel` / `x-sultix-*` identifiers must be stripped.
+`buoy` and `beacon` adapt and **rebrand** reverse-tunnel, transparent-proxy,
+and device-CA machinery the operator wrote for an earlier private project.
+Every identifier from that origin is stripped — the repos carry zero trace of
+it.
 
 ---
 
@@ -491,7 +492,7 @@ and device-CA machinery from the private `sultix` project (same owner). All
 | 10 | File format: single `.pharos` extension, `enc` in-header. | 2026-05-17 |
 | 11 | Protocols: versioned tagged list, ignore-unknown. | 2026-05-17 |
 | 12 | QR: enrollment ticket default; self-contained QR for offline. | 2026-05-17 |
-| 13 | Reuse + rebrand `sultix` relay/tunnel/device-CA code. | 2026-05-17 |
+| 13 | Reuse + rebrand relay/tunnel/device-CA code from an earlier private project; all origin identifiers stripped. | 2026-05-17 |
 | 14 | Node/relay onboarding over SSH (agent install + update); no cloud-provider API. Node keys are generated on-node and signed via CSR; no bootstrap token. Supersedes the §3 `CloudProvider` interface. | 2026-05-18 |
 | 15 | Per-peer 256-bit AmneziaWG preshared keys, for post-quantum (harvest-now-decrypt-later) hardening of the data plane. See §4. | 2026-05-19 |
 | 16 | Per-node network policy — forwarding / masquerade / client-isolation toggles, set per `buoy` from the admin UI. See §3. | 2026-05-19 |
