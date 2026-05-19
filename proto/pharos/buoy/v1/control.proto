@@ -86,6 +86,10 @@ message GetStatusResponse {
   string agent_version = 1;
   int64 uptime_seconds = 2;
   repeated ServiceStatus services = 3;
+  // amneziawg is the node's AmneziaWG server identity, populated once buoy
+  // has configured awg0. caravel needs these exact values to build a tunnel
+  // that handshakes (DESIGN §3). Absent until the data plane is up.
+  AmneziaWGInfo amneziawg = 4;
 }
 
 // ServiceStatus is the health of one protocol's data-plane service.
@@ -96,6 +100,45 @@ message ServiceStatus {
   bool listening = 3;
   uint32 peer_count = 4;
   string detail = 5;
+}
+
+// AmneziaWGInfo is a node's AmneziaWG server identity, as buoy configured it.
+message AmneziaWGInfo {
+  // public_key is the node's AmneziaWG server public key.
+  string public_key = 1;
+  // obfuscation is the node's obfuscation parameter set.
+  AmneziaWGObfuscation obfuscation = 2;
+}
+
+// AmneziaWGObfuscation is one node's AmneziaWG obfuscation parameters. Each
+// node randomises its own set for traffic diversity, so caravel must receive
+// the exact values to build a tunnel that handshakes (DESIGN §3). The field
+// names match the AmneziaWG config keys verbatim.
+//
+// buoy generates and enforces these structural rules; any client that
+// generates or validates a set must apply the same guards:
+//   - jmin <= jmax
+//   - h1-h4 are four distinct values, each >= 5 (1-4 are reserved for
+//     AmneziaWG's standard packet types)
+//   - s2 != s1 + 56 — otherwise a padded init packet is length-
+//     indistinguishable from a padded response packet and awg rejects it
+message AmneziaWGObfuscation {
+  uint32 jc = 1; // junk packet count
+  uint32 jmin = 2; // junk packet minimum size
+  uint32 jmax = 3; // junk packet maximum size
+  uint32 s1 = 4; // init-packet junk size
+  uint32 s2 = 5; // response-packet junk size
+  uint32 s3 = 6; // cookie-reply-packet junk size
+  uint32 s4 = 7; // transport-packet junk size
+  uint32 h1 = 8; // init-packet magic header
+  uint32 h2 = 9; // response-packet magic header
+  uint32 h3 = 10; // underload-packet magic header
+  uint32 h4 = 11; // transport-packet magic header
+  string i1 = 12; // special-junk packet templates I1-I5
+  string i2 = 13;
+  string i3 = 14;
+  string i4 = 15;
+  string i5 = 16;
 }
 
 message GetMetricsRequest {}
