@@ -17,9 +17,9 @@ subproject must read, in order: this file → `docs/DESIGN.md` → the subprojec
 
 ## 2. Languages & versions
 
-- **`helm`, `buoy`, `beacon`** — Go (latest stable, currently 1.25.x).
+- **`coxswain`, `buoy`, `beacon`** — Go (latest stable, currently 1.25.x).
   Module paths: `github.com/PharosVPN/<repo>`.
-- **`helm` admin UI** — SvelteKit 2 + Svelte 5, TypeScript, Tailwind. Built to
+- **`coxswain` admin UI** — SvelteKit 2 + Svelte 5, TypeScript, Tailwind. Built to
   static assets, embedded in the Go binary via `//go:embed`.
 - **`caravel`** — native: Kotlin (Android) + Swift (iOS). VPN tunnelling needs
   `VpnService` / `NetworkExtension`, which are platform-native. Cross-platform
@@ -71,11 +71,11 @@ machinery the operator wrote for an earlier private project. When adapting it:
 - Unit tests for logic; integration tests for anything crossing mTLS.
 - No secrets in git. Ever. Not in test fixtures either.
 - A subproject is "done" when it builds, tests pass in CI, its README is
-  accurate, and it interoperates with `helm` against the shared protos.
+  accurate, and it interoperates with `coxswain` against the shared protos.
 
 ## 8. Security posture (non-negotiable)
 
-- `helm` opens **no inbound ports**. All connections are helm-initiated outbound.
+- `coxswain` opens **no inbound ports**. All connections are coxswain-initiated outbound.
 - `buoy` and `beacon` accept only mTLS; certs must chain to the in-repo CA.
 - `beacon` never sees plaintext profile bundles — only `account`-mode ciphertext.
-- User private keys never exist in usable form on `helm` (see DESIGN §8).
+- User private keys never exist in usable form on `coxswain` (see DESIGN §8).

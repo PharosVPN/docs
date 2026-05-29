@@ -7,14 +7,14 @@ that crosses a process boundary.
 ## Layout
 
 ```
-proto/pharos/buoy/v1/control.proto   buoy node control service (helm ↔ buoy)
+proto/pharos/buoy/v1/control.proto   buoy node control service (coxswain ↔ buoy)
 ```
 
 ## Rules
 
 - Schemas are versioned by package path (`...v1`). Add fields, never repurpose
   tags. Unknown fields and enum values are ignored, never rejected (DESIGN §11).
-- `helm` owns these contracts; `buoy`, `beacon`, and `caravel` consume them.
+- `coxswain` owns these contracts; `buoy`, `beacon`, and `caravel` consume them.
 - Each consuming repo generates its own code (committed in-repo) from a copy of
   these schemas. `buf` managed mode sets the per-repo Go import path.
 - May graduate to a dedicated `proto` repo later.
