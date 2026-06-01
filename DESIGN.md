@@ -258,6 +258,46 @@ the network-policy rule set (decision 16).
 - Carries only **ciphertext** profile bundles — see §8 — so a compromised remote
   `beacon` host cannot read user profiles.
 
+### control-plane egress relaying (anti-observability)
+
+`coxswain` dials **out** to every node — gRPC `NodeControl` (mTLS, :8444) and
+SSH (:22, onboarding/update, decision 14). "Zero inbound" hides coxswain's
+*attack surface*, not its *observability*: an observer watching any one public
+node sees coxswain's egress IP, which reveals the operator's location and
+clusters the whole fleet to a single network pivot. The data-plane cascade
+(decision 18) does not help — it hides *client→destination*, not
+*controller→node*.
+
+- **Egress relay.** Route every coxswain→node connection through a relay so the
+  node (and any node-side observer) sees the **relay's** IP, never coxswain's:
+  `coxswain → relay → node:port`.
+- **Protocol-blind.** Both control channels are already end-to-end secured
+  (gRPC mTLS, SSH) between coxswain and the node, so the relay forwards **raw
+  TCP** and terminates neither — one generic relay serves both channels. Simpler
+  than beacon's gRPC-aware *ingress* proxy: no message decoding, no metadata
+  handling — just `CONNECT host:port`, then byte-pump.
+- **Transport reuse, inverted.** Reuses the beacon reverse tunnel (`coxswain`
+  dials out, TLS-mutual-auth, yamux, auto-reconnecting) but with the substream
+  direction inverted: for **ingress** beacon opens substreams and coxswain
+  accepts; for **egress** *coxswain opens* a substream per outbound dial and the
+  relay accepts it, reads the target, and dials the node. coxswain remains the
+  dialer — zero inbound — in both.
+- **Unified dialer.** Both channels route through one
+  `DialContext(ctx, net, addr)` chokepoint: gRPC via `grpc.WithContextDialer`,
+  SSH by swapping its `net.Dialer`. Direct (no relay) is the default; relayed is
+  opt-in per fleet.
+- **Fixed path** (vs the data plane's per-profile dynamic hopping): the relay
+  set is operator-configured and stable.
+- **Complexity ladder** (stop early on purpose): (1) **one relay** hides
+  coxswain's IP from nodes — *v1*; (2) fixed **N-relay chain** so no single relay
+  sees both coxswain and the node; (3) onion routing (relay-operator-resistant)
+  — deferred.
+- **Irreducible leak.** The first relay sees coxswain's IP. Mitigate
+  operationally — run it on a disposable VPS, or send coxswain's first hop over
+  Tor — not in-protocol below the onion tier.
+- **No HA.** A control-plane outage is survivable — nodes keep serving from
+  persisted state (§11) — so the egress path needs no redundancy.
+
 ### caravel (mobile client)
 
 - **Two decoupled layers:** a VPN engine (establishes tunnels, multi-node /
@@ -581,6 +621,7 @@ it.
 | 16 | Per-node network policy — forwarding / masquerade / client-isolation toggles, set per `buoy` from the admin UI. See §3. | 2026-05-19 |
 | 17 | Multi-IP/port node endpoints + client-side endpoint rotation, for anti-correlation. Endpoints are always an array. Rotation default off (personal) / on (enterprise). See §3. | 2026-05-19 |
 | 18 | Node cascade (multi-hop): client→entry→exit over mTLS-authorized inner AmneziaWG links. coxswain coordinates the mesh; admin defines the graph, client picks an exit out-of-band via the control channel. Exit-switch is a live server-side route flip (no profile change); client only ever handshakes with the entry. 2 hops default, 3 max, gated by computed MTU ≥ 1280. See §3. | 2026-05-29 |
+| 19 | Control-plane egress relaying: route coxswain's outbound channels (gRPC NodeControl + SSH) through a protocol-blind raw-TCP relay so nodes never see coxswain's IP. Reuses the beacon reverse tunnel with the substream direction inverted (coxswain opens). Fixed hop path; one DialContext chokepoint for both channels; v1 = single relay, N-relay chain and onion deferred. See §3. | 2026-06-02 |
 
 ### Still open
 
