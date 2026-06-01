@@ -41,7 +41,7 @@ machinery the operator wrote for an earlier private project. When adapting it:
 - Strip **every** identifier from the origin project — package names, import
   paths, type names, metadata keys, comments, file names.
 - The new repo must contain **zero trace** of the origin project.
-- Re-license headers to AGPL-3.0 (see §6).
+- Re-license headers to Apache-2.0 (see §6).
 
 ## 5. Repo layout (Go projects)
 
@@ -49,7 +49,7 @@ machinery the operator wrote for an earlier private project. When adapting it:
 <repo>/
   cmd/<binary>/main.go
   internal/...            # all non-exported packages
-  LICENSE                 # full AGPL-3.0 text
+  LICENSE                 # full Apache-2.0 text
   README.md
   BUILD.md
   CONTRIBUTING.md         # DCO instructions
@@ -59,8 +59,9 @@ machinery the operator wrote for an earlier private project. When adapting it:
 
 ## 6. License & commits
 
-- License: **AGPL-3.0-or-later**, whole platform. Every source file carries the
-  short AGPL header. Every repo ships the full `LICENSE` text.
+- License: **Apache-2.0**, whole platform. Every source file carries the
+  short `SPDX-License-Identifier: Apache-2.0` header. Every repo ships the full
+  `LICENSE` text.
 - Commits use **Conventional Commits** (`feat:`, `fix:`, `docs:`, `perf:`, …).
 - Every commit is **signed off** (`git commit -s`) — DCO, no CLA.
 - Branch from `main`; do not commit straight to `main`. PRs only.

@@ -28,4 +28,4 @@ postures — personal and enterprise.
 
 ## License
 
-AGPL-3.0-or-later. Contributions under the DCO (`git commit -s`). No CLA.
+Apache-2.0. Contributions under the DCO (`git commit -s`). No CLA.

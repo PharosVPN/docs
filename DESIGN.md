@@ -525,14 +525,19 @@ Same binaries, two presets at `cox init`:
 
 ## 13. License & contribution
 
-- **AGPL-3.0-or-later** for the entire platform, every repo. Rationale: the user
-  wants commercial users to *contribute back*, not to pay. AGPL's network
-  copyleft forces anyone running a modified version as a service to publish
-  their changes — forced contribution, not forced payment.
+- **Apache-2.0** for the entire platform, every repo. Rationale: the goal is the
+  **widest possible adoption and contribution**. AGPL's network copyleft was
+  considered — it would *force* service operators to publish their changes — but
+  in practice it repels the commercial users whose contributions we want (many
+  organisations ban AGPL outright), shrinking both adoption and the contributor
+  pool. A permissive licence maximises reach, and Apache-2.0's explicit **patent
+  grant** suits a cryptography/networking project, giving adopters and
+  contributors clear patent terms.
 - **DCO** (Developer Certificate of Origin, `Signed-off-by`) for contributions.
-  No CLA — there is no plan to relicense or dual-license.
-- Every source file carries a short AGPL header. Each repo ships `LICENSE`
-  (full AGPL-3.0 text) and `CONTRIBUTING.md` (DCO instructions).
+  No CLA — a permissive licence needs neither relicensing nor dual-licensing.
+- Every source file carries a short `SPDX-License-Identifier: Apache-2.0`
+  header. Each repo ships `LICENSE` (full Apache-2.0 text) and `CONTRIBUTING.md`
+  (DCO instructions).
 
 ---
 
@@ -559,7 +564,7 @@ it.
 | # | Decision | Date |
 |---|---|---|
 | 1 | Name: PharosVPN. Org `github.com/PharosVPN`. | 2026-05-17 |
-| 2 | License AGPL-3.0-or-later + DCO, no CLA. | 2026-05-17 |
+| 2 | License Apache-2.0 + DCO, no CLA. | 2026-05-17 |
 | 3 | Wire protocol: gRPC over mTLS (not plain JSON). | 2026-05-17 |
 | 4 | Three roles: `coxswain` / `buoy` / `beacon`; client `caravel`. | 2026-05-17 |
 | 5 | `beacon` always embedded in `coxswain`, optionally remote. | 2026-05-17 |
