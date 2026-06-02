@@ -298,6 +298,36 @@ clusters the whole fleet to a single network pivot. The data-plane cascade
 - **No HA.** A control-plane outage is survivable — nodes keep serving from
   persisted state (§11) — so the egress path needs no redundancy.
 
+### control-plane onion routing (relay-operator-resistant)
+
+The egress chain (above) hides coxswain's IP from every relay past the first,
+but coxswain still mutually-TLSes with each hop, so every relay sees coxswain's
+controller **cert** (identity) and learns its own next hop. A single coerced or
+malicious relay can therefore confirm "coxswain talks to this fleet". **Onion
+routing** (ladder step 3) closes that: each relay decrypts only its own layer —
+it sees its predecessor and successor and nothing else, never coxswain's
+identity nor the full path.
+
+- **Per-relay onion key.** Each relay publishes an X25519 **onion public key** at
+  enrollment (generated on-host beside its keypair; recorded by coxswain with its
+  cert). No new trust root — it rides the existing CSR-over-SSH enrollment.
+- **Single-pass circuit setup** (encrypt-to-pubkey, no telescoping handshakes —
+  Sphinx/HORNET-style). For path R₁…Rₙ, coxswain derives a per-hop key
+  `Kᵢ = HKDF(ECDH(ephᵢ, onionPubᵢ))` with a fresh ephemeral X25519 key per hop and
+  nests: `onionᵢ = ephᵢ ‖ AEAD(Kᵢ; nextHop ‖ onionᵢ₊₁)`, the innermost carrying
+  `CONNECT node:port`. Rᵢ does `ECDH(onionPrivᵢ, ephᵢ) → Kᵢ`, opens its layer,
+  learns only its next hop, and forwards the inner onion.
+- **Data phase: layered streaming AEAD.** Each Rᵢ keeps Kᵢ. Forward records are
+  wrapped in n layers (Kₙ innermost … K₁ outermost); R₁ peels K₁ → … → Rₙ peels Kₙ
+  → plaintext to the node. The return path re-layers in reverse and coxswain peels
+  all n. Length-prefixed records, per-direction nonce counters. The carried
+  payload (gRPC-mTLS / SSH) stays end-to-end — the onion is an extra wrapper.
+- **Scope.** Fixed path (the egress chain order), control-plane only; the layered
+  crypto's latency/CPU cost is irrelevant at control-plane rates. The first relay
+  still sees coxswain's **IP** (the irreducible network fact) but no longer its
+  identity — pair with a disposable first-hop VPS or Tor to also hide the IP. A
+  malicious *coxswain* is out of scope (it owns the fleet).
+
 ### caravel (mobile client)
 
 - **Two decoupled layers:** a VPN engine (establishes tunnels, multi-node /
@@ -622,6 +652,7 @@ it.
 | 17 | Multi-IP/port node endpoints + client-side endpoint rotation, for anti-correlation. Endpoints are always an array. Rotation default off (personal) / on (enterprise). See §3. | 2026-05-19 |
 | 18 | Node cascade (multi-hop): client→entry→exit over mTLS-authorized inner AmneziaWG links. coxswain coordinates the mesh; admin defines the graph, client picks an exit out-of-band via the control channel. Exit-switch is a live server-side route flip (no profile change); client only ever handshakes with the entry. 2 hops default, 3 max, gated by computed MTU ≥ 1280. See §3. | 2026-05-29 |
 | 19 | Control-plane egress relaying: route coxswain's outbound channels (gRPC NodeControl + SSH) through a protocol-blind raw-TCP relay so nodes never see coxswain's IP. Reuses the beacon reverse tunnel with the substream direction inverted (coxswain opens). Fixed hop path; one DialContext chokepoint for both channels; v1 = single relay, N-relay chain and onion deferred. See §3. | 2026-06-02 |
+| 20 | Control-plane onion routing (egress relaying ladder step 3): layered per-hop AEAD over the egress chain so each relay decrypts only its own layer — it sees only its neighbours, never coxswain's identity or the full path, defeating a coerced relay. Single-pass circuit setup by encrypting each layer to the relay's enrolled X25519 onion key (no telescoping). Fixed path, control-plane only; the first relay still sees coxswain's IP but not its identity. See §3. | 2026-06-02 |
 
 ### Still open
 
