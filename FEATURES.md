@@ -47,18 +47,30 @@ The controller stays up and continuously guarantees the fleet is correct.
 - **Live event stream** over SSE/WebSocket for dashboards. *(A first-class gRPC
   monitoring stream for SIEM/enterprise ingestion is COMING — Phase D.)*
 
-## Smart analytics / anomaly detection — PLANNED (Phase C)
-Enterprise security analytics over session history:
-- **Leaked-profile detection** — one profile from multiple source IPs concurrently.
+## Smart analytics / anomaly detection — SHIPPED (Phase C, Tier-1)
+An in-process engine sweeps the session history (every 60s) and raises alerts.
+**Live since Phase C** (the four Tier-1 rules):
+- **Leaked-profile detection** — one profile from multiple source IPs in a window.
+  *(Proven live: two devices sharing one key were flagged with full evidence.)*
 - **Impossible travel** — geographically impossible IP changes (geo-velocity).
-- **Concurrent sessions across nodes**, **new geo/ASN**, **dormant-then-active**.
-- **Auth-failure spikes** (brute-force), **revoked-but-still-connecting**,
-  off-hours access, geo-fence/concurrent-device policy, cert-expiry-in-use.
-- **Data-volume / exfil anomalies**, connection flapping.
-- **Fleet-health analytics** — node drift, unreachable/flapping, handshake-success
-  drop, cascade degradation, capacity.
-- Alerts surfaced via the API + live stream. *(Recommends Postgres at scale;
-  warns if analytics runs on SQLite.)*
+- **Concurrent sessions across nodes**.
+- **New geo** — a device connecting from a country it's never used.
+- Alerts carry severity + evidence, are surfaced via `GET /api/alerts`, the live
+  stream, the `cox alerts` CLI, and the dashboard; **Ack/Resolve** workflow.
+- **Postgres posture**: the engine **warns when run on SQLite** and recommends
+  Postgres for production/enterprise scale.
+
+**PLANNED (Tier 2–4):** auth-failure spikes (brute-force), revoked-but-still-
+connecting, off-hours access, geo-fence/concurrent-device policy, cert-expiry-in-
+use, data-volume/exfil anomalies, dormant-then-active, and fleet-health analytics
+(node drift/flapping, handshake-success drop, cascade degradation, capacity).
+
+## Management dashboard — SHIPPED
+The self-hosted web dashboard surfaces the whole control plane: fleet/paths/
+profiles plus **Live & sessions** (real-time connect/disconnect feed + history),
+**Alerts** (severity, evidence, ack/resolve), **Audit log** (filterable), and
+**API tokens** (create with scope/expiry, secret shown once, revoke). Served
+locally on the controller (zero inbound).
 
 ## Data plane — SHIPPED (onion PARTIAL)
 - **Dual-protocol** — **AmneziaWG** (obfuscated WireGuard, DPI-resistant) and
