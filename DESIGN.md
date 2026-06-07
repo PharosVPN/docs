@@ -34,9 +34,10 @@ the control plane, account system, and clients around that data plane.
   attacked: no inbound ports, no public DNS, no public IP.
 - **Dumb nodes.** A compromised VPN node must not yield control of the fleet.
   Nodes act only on cryptographically validated instructions.
-- **Operate with the controller offline.** If the controller is down, every node
-  keeps serving existing tunnels indefinitely. Control plane, not data-plane
-  dependency. The same applies to clients: a client connects from cached
+- **Survive a controller outage.** The controller is always-on and continuously
+  reconciles the fleet, but it is a control-plane, not a data-plane, dependency:
+  if it is briefly unavailable, every node keeps serving existing tunnels
+  indefinitely. The same applies to clients: a client connects from cached
   profiles when the account service is unreachable.
 - **The controller never holds usable user secrets.** User profiles are
   end-to-end encrypted; a controller compromise yields ciphertext, not profiles.

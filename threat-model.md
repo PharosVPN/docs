@@ -14,7 +14,7 @@ a reviewer-facing document and is **honest about current gaps** — see the
 | Party | Trust | Role |
 |---|---|---|
 | **Operator** | trusted (it's you) | runs the controller; holds the Fleet CA key |
-| **coxswain** (controller) | **trusted root** | provisions the fleet, signs identities, seals profiles. No inbound ports; assumes it will be attacked. Ephemeral — can be turned off after configuring. |
+| **coxswain** (controller) | **trusted root** | provisions the fleet, signs identities, seals profiles, and stays on to continuously reconcile fleet health. No inbound ports (dials out); assumes it will be attacked; can be hidden behind relays. The data plane keeps running if it is briefly unavailable. |
 | **node** (data plane) | **untrusted public infra** | a rented VPS that terminates client tunnels and egresses. Acts only on cryptographically validated control-plane instructions. |
 | **relay** (control plane) | **untrusted public infra** | forwards the control plane (and optionally hides the controller's origin). Sees metadata, never profile contents. |
 | **caravel** (client) | trusted by its user | holds the device key + the account passphrase; decrypts profiles locally. |
@@ -48,8 +48,10 @@ relays are disposable, untrusted, and individually replaceable. Profiles are
 - **A compromised controller** gets: the **Fleet CA key → full fleet
   compromise** going forward. It still **cannot read past profiles** (e2e-sealed;
   it only ever held ciphertext). This is the crown jewel — keep the controller
-  private, and note it is **ephemeral by design** (configure, then power it off;
-  the data plane keeps running autonomously).
+  private (no inbound ports, optionally hidden behind relays). It is **always-on**
+  (it continuously reconciles fleet health), but it is a control-plane, not a
+  data-plane, dependency: if it is briefly unavailable, the data plane keeps
+  running autonomously.
 - **A compromised client/device** exposes that device's profiles + passphrase.
   Endpoint security is the user's responsibility.
 

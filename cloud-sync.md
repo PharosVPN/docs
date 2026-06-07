@@ -105,8 +105,8 @@ So the cloud set is always *exactly* the latest sync. Reference:
 ## 7. Controller status (informational)
 
 The client surfaces three things about the session. **None of them block
-connecting** — the data plane runs even when the controller is down/gone
-(coxswain is ephemeral by design).
+connecting** — the controller is a control-plane, not a data-plane, dependency,
+so the data plane keeps running even if the controller is briefly unavailable.
 
 | Field | Source | Meaning |
 |---|---|---|
