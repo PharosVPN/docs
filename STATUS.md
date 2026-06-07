@@ -33,11 +33,11 @@ Legend: **✅ implemented + live-proven** · **🟡 implemented, lightly tested*
 
 | Client | Status |
 |---|---|
-| **caravel-mac** (macOS, SwiftUI) | ✅ import + cloud sync + connect (AmneziaWG/XRay/both), map, controller status |
-| **caravel** core (Go, shared engine) | ✅ |
-| **caravel-linux** (Wails + AppImage) | 🧪 built (cross-compiles clean); needs a Linux box for the Vite/GTK runtime + AppImage + live TUN |
-| **caravel-android** (Compose) | 🧪 built; UI + map + import live in the emulator; sync/connect wiring to the engine in progress |
-| **caravel-ios** (SwiftUI) | 🧪 built (simulator); needs the engine linked + a Team to sign + a device |
+| **caravel-mac** (macOS, SwiftUI) | ✅ import + cloud sync + connect (AmneziaWG/XRay/both), map, controller status — **`v0.1.0` signed DMG released** |
+| **caravel** core (Go, shared engine) | ✅ — exposes the same surface (sync, list, prepare, connect, controller-status) to every client; version embedded |
+| **caravel-linux** (Wails + AppImage) | 🟡 built — **`v0.1.0` AppImage released for x86_64 + aarch64**; on-device TUN testing pending |
+| **caravel-android** (Compose, VpnService) | 🟡 built — **`v0.1.0` debug APK released**; bundles the real Go engine (all 4 ABIs); on-device connect testing pending |
+| **caravel-ios** (SwiftUI, NEPacketTunnel) | 🟡 builds (simulator) with the **real engine linked** + signs with a Team; a device / TestFlight build needs the App Group `group.org.pharosvpn.caravel` registered once in Xcode (the sole remaining step) |
 | **caravel-openwrt** | 🧪 client mode (CLI + procd, userspace AmneziaWG over kmod-tun); server mode planned |
 | **caravel-opnsense** | 🧪 `pharos-awg` userspace AmneziaWG data-plane daemon; plugin UI + server mode planned |
 
@@ -49,12 +49,23 @@ Legend: **✅ implemented + live-proven** · **🟡 implemented, lightly tested*
 - Controller + nodes run on Linux (amd64). The macOS client runs on Apple
   Silicon + Intel (universal).
 
+## Releases
+
+First public builds are out as **`v0.1.0`** (pre-alpha) — see each repo's
+Releases page (linked from the [org profile](https://github.com/PharosVPN)):
+macOS signed `.dmg`, Linux `.AppImage` (x86_64 + aarch64), Android debug `.apk`.
+iOS ships via TestFlight once the App Group is registered. Every repo carries a
+`VERSION` file, tags releases `vX.Y.Z`, and bumps via an interactive
+`scripts/bump-version.sh` (patch/minor/major).
+
 ## Not done yet (so you're not surprised)
 
-- Signed releases, checksums, SBOMs, dependency scanning, third-party audit.
+- Notarized macOS, Play-signed Android, iOS TestFlight; checksums, SBOMs,
+  dependency scanning, third-party audit. (The macOS DMG is Developer-ID signed.)
 - The residual risks in the [threat model](./threat-model.md) (e.g. guard-relay
   origin exposure).
-- Mobile + Linux clients (in progress), controller backup/restore, Postgres.
+- On-device connect testing for the mobile + Linux clients; controller
+  backup/restore; Postgres backend.
 - Any claim of production-grade privacy or security.
 
 See the [threat model](./threat-model.md) for what is and isn't protected, and
