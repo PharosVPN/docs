@@ -37,13 +37,15 @@ The controller stays up and continuously guarantees the fleet is correct.
   who, what, to what, from where, success/failure. Queryable (`GET /api/audit`,
   `cox audit`); also emitted as structured logs (journald); retention-bounded.
 
-## Live monitoring — COMING (Phase B)
-- Real-time monitoring of every node over the **bidirectional gRPC streaming**
-  control channel: client **connect/disconnect**, handshake up/down, per-session
-  source IP, throughput.
-- Persisted session history (the live firehose becomes queryable history).
-- Live event stream for consumers: **SSE/WebSocket** (dashboards) + **gRPC**
-  (SIEM/enterprise ingestion).
+## Live monitoring — SHIPPED (Phase B)
+- Real-time monitoring of every node over the WatchEvents **gRPC stream**: client
+  **connect/disconnect** carrying the per-session **source IP** + resolved
+  **device/user**, plus handshake up/down. *(Verified live: a client connect
+  surfaced as a persisted, device-attributed session.)*
+- **Persisted session history** — every connect/disconnect is stored
+  (`connection_events`), queryable via `GET /api/sessions` (monitor scope).
+- **Live event stream** over SSE/WebSocket for dashboards. *(A first-class gRPC
+  monitoring stream for SIEM/enterprise ingestion is COMING — Phase D.)*
 
 ## Smart analytics / anomaly detection — PLANNED (Phase C)
 Enterprise security analytics over session history:
