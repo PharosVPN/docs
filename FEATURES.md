@@ -62,15 +62,25 @@ An in-process engine sweeps the session history (every 60s) and raises alerts.
 - **Impossible travel** — geographically impossible IP changes (geo-velocity).
 - **Concurrent sessions across nodes**.
 - **New geo** — a device connecting from a country it's never used.
-- Alerts carry severity + evidence, are surfaced via `GET /api/alerts`, the live
-  stream, the `cox alerts` CLI, and the dashboard; **Ack/Resolve** workflow.
+
+**Tier-2 (SHIPPED v0.3.0):**
+- **Revoked-profile-active** (critical) — a revoked/disabled device still connecting.
+- **Auth-failure spike** (warning) — brute-force / credential-stuffing (≥5 failed
+  logins from one source IP in a window).
+- **Dormant-then-active** (info) — a long-idle device suddenly reconnecting.
+- **Off-hours access** (info) — a connect well outside the device's learned active
+  hours (conservative, low-false-positive baseline).
+- **Fleet-health** (warning/critical) — a node Unreachable/Error, **auto-resolved**
+  when it recovers.
+
+- Alerts carry severity + evidence, surfaced via `GET /api/alerts`, the live stream
+  (SSE/WS + gRPC SIEM), the `cox alerts` CLI, and the dashboard; **Ack/Resolve**.
 - **Postgres posture**: the engine **warns when run on SQLite** and recommends
   Postgres for production/enterprise scale.
 
-**PLANNED (Tier 2–4):** auth-failure spikes (brute-force), revoked-but-still-
-connecting, off-hours access, geo-fence/concurrent-device policy, cert-expiry-in-
-use, data-volume/exfil anomalies, dormant-then-active, and fleet-health analytics
-(node drift/flapping, handshake-success drop, cascade degradation, capacity).
+**PLANNED (Tier 3–4):** geo-fence / concurrent-device policy, cert-expiry-in-use,
+data-volume/exfil anomalies (needs a metrics-persistence pipeline), and deeper
+fleet-health (handshake-success drop, cascade degradation, capacity).
 
 ## Management dashboard — SHIPPED
 The self-hosted web dashboard surfaces the whole control plane: fleet/paths/
