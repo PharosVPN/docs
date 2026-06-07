@@ -49,8 +49,10 @@ The controller stays up and continuously guarantees the fleet is correct.
   surfaced as a persisted, device-attributed session.)*
 - **Persisted session history** — every connect/disconnect is stored
   (`connection_events`), queryable via `GET /api/sessions` (monitor scope).
-- **Live event stream** over SSE/WebSocket for dashboards. *(A first-class gRPC
-  monitoring stream for SIEM/enterprise ingestion is COMING — Phase D.)*
+- **Live event stream** for consumers — SSE/WebSocket for dashboards **and a
+  first-class gRPC stream** for SIEM/enterprise ingestion (monitor-scope token,
+  off-by-default, TLS for production). *(Verified live: a real connect streamed
+  through gRPC to a token-authenticated consumer.)*
 
 ## Smart analytics / anomaly detection — SHIPPED (Phase C, Tier-1)
 An in-process engine sweeps the session history (every 60s) and raises alerts.
@@ -104,8 +106,9 @@ locally on the controller (zero inbound).
 - **End-to-end sealed profiles** — the controller stores only ciphertext; profiles
   decrypt on the device.
 - **Per-repo semantic versioning** + signed GitHub releases.
-- **SQLite** backend today; **Postgres** for always-on/enterprise scale — PLANNED
-  (pure-Go pgx, single binary preserved).
+- **SQLite by default; optional pure-Go Postgres backend** for always-on/
+  enterprise scale (pgx, selected by DSN — single static binary preserved,
+  verified against live Postgres incl. the tamper-evident audit chain).
 
 ---
 
