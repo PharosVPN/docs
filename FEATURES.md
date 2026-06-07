@@ -33,9 +33,14 @@ The controller stays up and continuously guarantees the fleet is correct.
 - **Scoped tokens with expiry** — least-privilege scopes (`readonly` / `monitor` /
   `admin`), optional expiry, **hashed at rest** (plaintext shown once), revocable.
   `cox tokens create|list|revoke`.
-- **First-class audit log** — **every** management action (API and CLI) is logged:
-  who, what, to what, from where, success/failure. Queryable (`GET /api/audit`,
-  `cox audit`); also emitted as structured logs (journald); retention-bounded.
+- **First-class, tamper-evident audit log** — **every** management action (API and
+  CLI) is logged: who, what, to what, from where, success/failure. Rows are
+  **hash-chained** so edits/deletions are detectable (`cox audit verify`).
+  Queryable (`GET /api/audit`, `cox audit`); structured logs to journald;
+  retention-bounded. *(Hardened via an adversarial security audit — see below.)*
+- **Hardened access** — the session cookie is `Secure` over TLS; the dashboard is
+  reached only over TLS or an SSH-forwarded loopback port; failed logins never log
+  attacker-controlled input as the actor.
 
 ## Live monitoring — SHIPPED (Phase B)
 - Real-time monitoring of every node over the WatchEvents **gRPC stream**: client
