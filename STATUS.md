@@ -35,10 +35,11 @@ Legend: **✅ implemented + live-proven** · **🟡 implemented, lightly tested*
 |---|---|
 | **caravel-mac** (macOS, SwiftUI) | ✅ import + cloud sync + connect (AmneziaWG/XRay/both), map, controller status |
 | **caravel** core (Go, shared engine) | ✅ |
-| **caravel-linux** (Wails + AppImage) | 🧪 in progress |
-| **caravel-android** (Compose) | 🧪 in progress |
-| **caravel-ios** (SwiftUI) | 🧪 in progress |
-| **caravel-opnsense / caravel-openwrt** | 📋 design + scaffold |
+| **caravel-linux** (Wails + AppImage) | 🧪 built (cross-compiles clean); needs a Linux box for the Vite/GTK runtime + AppImage + live TUN |
+| **caravel-android** (Compose) | 🧪 built; UI + map + import live in the emulator; sync/connect wiring to the engine in progress |
+| **caravel-ios** (SwiftUI) | 🧪 built (simulator); needs the engine linked + a Team to sign + a device |
+| **caravel-openwrt** | 🧪 client mode (CLI + procd, userspace AmneziaWG over kmod-tun); server mode planned |
+| **caravel-opnsense** | 🧪 `pharos-awg` userspace AmneziaWG data-plane daemon; plugin UI + server mode planned |
 
 ## Tested platforms / flows
 
