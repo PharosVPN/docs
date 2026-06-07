@@ -37,9 +37,9 @@ Legend: **✅ implemented + live-proven** · **🟡 implemented, lightly tested*
 | **caravel** core (Go, shared engine) | ✅ — exposes the same surface (sync, list, prepare, connect, controller-status) to every client; version embedded |
 | **caravel-linux** (Wails + AppImage) | 🟡 built — **`v0.1.0` AppImage released for x86_64 + aarch64**; on-device TUN testing pending |
 | **caravel-android** (Compose, VpnService) | 🟡 built — **`v0.1.0` debug APK released**; bundles the real Go engine (all 4 ABIs); on-device connect testing pending |
-| **caravel-ios** (SwiftUI, NEPacketTunnel) | 🟡 builds (simulator) with the **real engine linked** + signs with a Team; a device / TestFlight build needs the App Group `group.org.pharosvpn.caravel` registered once in Xcode (the sole remaining step) |
-| **caravel-openwrt** | 🧪 client mode (CLI + procd, userspace AmneziaWG over kmod-tun); server mode planned |
-| **caravel-opnsense** | 🧪 `pharos-awg` userspace AmneziaWG data-plane daemon; plugin UI + server mode planned |
+| **caravel-ios** (SwiftUI, NEPacketTunnel) | 🟡 **signed device build passes** (app + Packet Tunnel extension + engine framework, App Group registered, Team baked in); remaining = TestFlight upload / on-device run |
+| **caravel-openwrt** | 🟡 client mode shipped — **installable LuCI app (`.ipk`)** + CLI + procd + uci + fw4 NAT/kill-switch. On the dev VM: UI loads end-to-end and `connect` brought **`awg0` up with a completed handshake** (single LAN node). Multi-hop fleet connect untested; server mode planned. |
+| **caravel-opnsense** | 🟡 client mode shipped — **installable `os-pharosvpn` MVC plugin (FreeBSD `pkg`)** + `pharos-awg` daemon. On the dev VM: VPN → PharosVPN menu/API/configd verified, the daemon brings **`awg0` up serving the UAPI**, and enabling a client generates the gateway + outbound-NAT + policy-route + kill-switch into `pf` (no self-lockout, clean teardown). Real-fleet leak-test pending; server mode planned. |
 
 ## Tested platforms / flows
 
