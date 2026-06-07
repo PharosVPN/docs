@@ -53,15 +53,16 @@ Legend: **✅ implemented + live-proven** · **🟡 implemented, lightly tested*
 
 First public builds are out as **`v0.1.0`** (pre-alpha) — see each repo's
 Releases page (linked from the [org profile](https://github.com/PharosVPN)):
-macOS signed `.dmg`, Linux `.AppImage` (x86_64 + aarch64), Android debug `.apk`.
-iOS ships via TestFlight once the App Group is registered. Every repo carries a
-`VERSION` file, tags releases `vX.Y.Z`, and bumps via an interactive
+macOS **signed + notarized** `.dmg`, Linux `.AppImage` (x86_64 + aarch64),
+Android debug `.apk`. iOS builds signed for device (App Group registered);
+TestFlight pending an App Store Connect record. Every repo carries a `VERSION`
+file, tags releases `vX.Y.Z`, and bumps via an interactive
 `scripts/bump-version.sh` (patch/minor/major).
 
 ## Not done yet (so you're not surprised)
 
-- Notarized macOS, Play-signed Android, iOS TestFlight; checksums, SBOMs,
-  dependency scanning, third-party audit. (The macOS DMG is Developer-ID signed.)
+- Play-signed Android, iOS TestFlight upload; checksums, SBOMs, dependency
+  scanning, third-party audit. (The macOS DMG is Developer-ID signed + notarized.)
 - The residual risks in the [threat model](./threat-model.md) (e.g. guard-relay
   origin exposure).
 - On-device connect testing for the mobile + Linux clients; controller
