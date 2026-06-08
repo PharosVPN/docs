@@ -74,9 +74,10 @@ An in-process engine sweeps the session history (every 60s) and raises alerts.
   hours (conservative, low-false-positive baseline).
 - **Fleet-health** (warning/critical) — a node Unreachable/Error, **auto-resolved**
   when it recovers.
-- **Data-volume / exfil** (warning, SHIPPED v0.4.0) — a session whose outbound tx
-  exceeds **both** 1 GiB and 10× the device's historical median, with a ≥20-session
-  baseline (median-not-mean, conservative).
+- **Data-volume / exfil** (warning, SHIPPED v0.4.1) — a session whose **upload**
+  (bytes the client sent toward the tunnel) exceeds **both** 1 GiB and 10× the
+  device's historical median, with a ≥20-session baseline (median-not-mean,
+  conservative). Per-session byte accounting survives endpoint roams.
 
 - Alerts carry severity + evidence, surfaced via `GET /api/alerts`, the live stream
   (SSE/WS + gRPC SIEM), the `cox alerts` CLI, and the dashboard; **Ack/Resolve**.
