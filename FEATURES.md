@@ -47,8 +47,10 @@ The controller stays up and continuously guarantees the fleet is correct.
   **connect/disconnect** carrying the per-session **source IP** + resolved
   **device/user**, plus handshake up/down. *(Verified live: a client connect
   surfaced as a persisted, device-attributed session.)*
-- **Persisted session history** — every connect/disconnect is stored
-  (`connection_events`), queryable via `GET /api/sessions` (monitor scope).
+- **Persisted session history with per-session byte counts** — every
+  connect/disconnect is stored (`connection_events`) with real **rx/tx** for the
+  session (the node observer tracks per-session deltas), queryable via
+  `GET /api/sessions`; shown in the dashboard (Rx/Tx columns).
 - **Live event stream** for consumers — SSE/WebSocket for dashboards **and a
   first-class gRPC stream** for SIEM/enterprise ingestion (monitor-scope token,
   off-by-default, TLS for production). *(Verified live: a real connect streamed
@@ -72,6 +74,9 @@ An in-process engine sweeps the session history (every 60s) and raises alerts.
   hours (conservative, low-false-positive baseline).
 - **Fleet-health** (warning/critical) — a node Unreachable/Error, **auto-resolved**
   when it recovers.
+- **Data-volume / exfil** (warning, SHIPPED v0.4.0) — a session whose outbound tx
+  exceeds **both** 1 GiB and 10× the device's historical median, with a ≥20-session
+  baseline (median-not-mean, conservative).
 
 - Alerts carry severity + evidence, surfaced via `GET /api/alerts`, the live stream
   (SSE/WS + gRPC SIEM), the `cox alerts` CLI, and the dashboard; **Ack/Resolve**.
@@ -79,8 +84,7 @@ An in-process engine sweeps the session history (every 60s) and raises alerts.
   Postgres for production/enterprise scale.
 
 **PLANNED (Tier 3–4):** geo-fence / concurrent-device policy, cert-expiry-in-use,
-data-volume/exfil anomalies (needs a metrics-persistence pipeline), and deeper
-fleet-health (handshake-success drop, cascade degradation, capacity).
+and deeper fleet-health (handshake-success drop, cascade degradation, capacity).
 
 ## Management dashboard — SHIPPED
 The self-hosted web dashboard surfaces the whole control plane: fleet/paths/
