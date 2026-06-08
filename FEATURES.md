@@ -112,6 +112,27 @@ locally on the controller (zero inbound).
 - **Endpoint rotation / unlinkability posture** — per-server keys, endpoint pool
   rotation, no node→controller trace.
 
+## Device enrollment & onboarding — SHIPPED
+Passphrase-less device onboarding via a **join link / QR code** — the "add a
+device" flow, self-hosted.
+- **Join link / QR** — an admin mints a one-time invite
+  (`pharosvpn://enroll?ca=…&relay=…&token=…`) from the dashboard or CLI; the
+  device redeems it in one step. One-time, **hashed at rest**, revocable.
+- **No account passphrase** — the device generates its own keypair + CSR and an
+  X25519 encryption key **on-device**; the controller signs a per-device
+  certificate and **seals the device's profile to its key**. No secret is typed or
+  transmitted.
+- **Cert-less claim, scoped to one method** — only `ClaimEnrollment` is allowed
+  cert-less at the relay (token-authorized); every other call still requires mTLS.
+  Preserves the controller's no-inbound-ports / relay-only posture.
+- **Data-plane-agnostic** — enrollment is "join the fleet" (device identity +
+  registration); the egress profile attaches as a separate policy, so the same
+  flow serves a future mesh data plane.
+- **Headless reference client** — the `caravel` CLI runs the whole lifecycle on a
+  plain Linux box (`caravel enroll '<link>'` → `sync` → `connect`).
+- *(Proven live end-to-end 2026-06-08: redeem link → sync → connect → **egress
+  through the node, with no passphrase**.)*
+
 ## Clients — SHIPPED v0.1.0 (pre-alpha)
 - **macOS** (signed + notarized DMG), **Linux** (AppImage x86_64 + aarch64),
   **Android** (APK), **iOS** (signs for device; TestFlight pending an App Group),
