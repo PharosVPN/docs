@@ -6,7 +6,8 @@ yet real — do not put them in marketing copy until they move to SHIPPED (we
 deliberately avoid over-claiming; see the false-advertising audit, 2026-06-07).
 
 Status legend: **SHIPPED** (live + proven) · **PARTIAL** (works, lightly tested)
-· **COMING** (in active build) · **PLANNED** (designed, not built).
+· **EXPERIMENTAL** (shipped but best-effort — treat output as indicative, not
+authoritative) · **COMING** (in active build) · **PLANNED** (designed, not built).
 
 ---
 
@@ -47,10 +48,13 @@ The controller stays up and continuously guarantees the fleet is correct.
   **connect/disconnect** carrying the per-session **source IP** + resolved
   **device/user**, plus handshake up/down. *(Verified live: a client connect
   surfaced as a persisted, device-attributed session.)*
-- **Persisted session history with per-session byte counts** — every
-  connect/disconnect is stored (`connection_events`) with real **rx/tx** for the
-  session (the node observer tracks per-session deltas), queryable via
-  `GET /api/sessions`; shown in the dashboard (Rx/Tx columns).
+- **Persisted session history** — every connect/disconnect is stored
+  (`connection_events`), queryable via `GET /api/sessions`; shown in the
+  dashboard. *(SHIPPED.)*
+- **Per-session byte totals (rx/tx)** — the node observer tracks per-session
+  deltas and shows them in the dashboard (Rx/Tx columns). **EXPERIMENTAL /
+  best-effort** — accounting survives endpoint roams but the totals are
+  indicative, not authoritative.
 - **Live event stream** for consumers — SSE/WebSocket for dashboards **and a
   first-class gRPC stream** for SIEM/enterprise ingestion (monitor-scope token,
   off-by-default, TLS for production). *(Verified live: a real connect streamed
@@ -74,10 +78,11 @@ An in-process engine sweeps the session history (every 60s) and raises alerts.
   hours (conservative, low-false-positive baseline).
 - **Fleet-health** (warning/critical) — a node Unreachable/Error, **auto-resolved**
   when it recovers.
-- **Data-volume / exfil** (warning, SHIPPED v0.4.1) — a session whose **upload**
-  (bytes the client sent toward the tunnel) exceeds **both** 1 GiB and 10× the
-  device's historical median, with a ≥20-session baseline (median-not-mean,
-  conservative). Per-session byte accounting survives endpoint roams.
+- **Data-volume / exfil** (warning, EXPERIMENTAL — shipped v0.4.1) — a session
+  whose **upload** (bytes the client sent toward the tunnel) exceeds **both**
+  1 GiB and 10× the device's historical median, with a ≥20-session baseline
+  (median-not-mean, conservative). Best-effort: it rides the **experimental**
+  per-session byte totals above, so treat its alerts as indicative.
 
 - Alerts carry severity + evidence, surfaced via `GET /api/alerts`, the live stream
   (SSE/WS + gRPC SIEM), the `cox alerts` CLI, and the dashboard; **Ack/Resolve**.

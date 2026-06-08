@@ -22,8 +22,8 @@ If code and `DESIGN.md` disagree, the document is wrong — fix it in the same P
 
 PharosVPN is a self-hostable, open-source, dual-protocol (AmneziaWG + XRay/REALITY)
 VPN fleet platform. A private controller (`coxswain`) drives a fleet of dumb public
-VPN nodes (`buoy`) over outbound mTLS, exposes end-users through an optional
-relay (`beacon`), and serves them a mobile client (`caravel`). One codebase, two
+VPN nodes (`node`) over outbound mTLS, exposes end-users through an optional
+relay (`relay`), and serves them a mobile client (`caravel`). One codebase, two
 postures — personal and enterprise.
 
 ## Repos
@@ -31,8 +31,8 @@ postures — personal and enterprise.
 | Repo | Role |
 |---|---|
 | [`coxswain`](https://github.com/PharosVPN/coxswain) | Controller / management plane + admin UI |
-| [`buoy`](https://github.com/PharosVPN/buoy) | VPN node agent |
-| [`beacon`](https://github.com/PharosVPN/beacon) | Relay |
+| [`node`](https://github.com/PharosVPN/node) | VPN node agent |
+| [`relay`](https://github.com/PharosVPN/relay) | Control-plane relay |
 | [`caravel`](https://github.com/PharosVPN/caravel) | Mobile client |
 
 ## License

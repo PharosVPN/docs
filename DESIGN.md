@@ -1,7 +1,6 @@
 # PharosVPN — Platform Design
 
 **Status:** draft v2 · 2026-05-17
-**Supersedes:** `amnezia-travelvpn/NEW-PROJECT-DESIGN.md` (the v1 design notes).
 
 This is the single source of truth for the PharosVPN platform. Every subproject
 README and `BUILD.md` defers to this document. When code and this document
@@ -52,15 +51,15 @@ the control plane, account system, and clients around that data plane.
                   │  (private network, behind NAT)    │
                   │  vpn-mgr daemon + admin Web UI     │
                   │  + SQLite state + CA + embedded    │
-                  │    beacon relay (toggleable)       │
+                  │    relay (toggleable)              │
                   └───────┬──────────────────┬─────────┘
         mTLS, coxswain-initiated outbound        │ reverse tunnel
         gRPC/HTTP2 to each node              │ (coxswain dials OUT to a
-                  │                          │  remote beacon)
+                  │                          │  remote relay)
         ┌─────────┼─────────┐                ▼
         ▼         ▼         ▼          ┌──────────────┐
-   ┌────────┐┌────────┐┌────────┐      │ beacon RELAY │  (public)
-   │  buoy  ││  buoy  ││  buoy  │ ...  │ mTLS ingress │
+   ┌────────┐┌────────┐┌────────┐      │    RELAY     │  (public)
+   │  node  ││  node  ││  node  │ ...  │ mTLS ingress │
    │ NODE A ││ NODE B ││ NODE N │      │ for clients  │
    │ public ││ public ││ public │      └──────┬───────┘
    │ AWG udp ││  ...   ││  ...   │             │ mTLS
@@ -74,19 +73,19 @@ the control plane, account system, and clients around that data plane.
 | Role | Repo | Network posture | Job |
 |---|---|---|---|
 | **Controller** | `coxswain` | Private, behind NAT. Zero inbound ports. | Source of truth, admin UI, issues certs/profiles, drives the fleet. |
-| **VPN node** | `buoy` | Public IP. Listens udp/tcp 443 + mTLS control port. | Runs the data plane. Dumb agent — applies only validated config. |
-| **Relay** | `beacon` | Public. The only public ingress for *clients*. | mTLS-terminating proxy. Lets clients reach a NAT'd controller. Always embedded in `coxswain`; optionally deployed remote. |
+| **VPN node** | `node` | Public IP. Listens udp/tcp 443 + mTLS control port. | Runs the data plane. Dumb agent — applies only validated config. |
+| **Relay** | `relay` | Public. The only public ingress for *clients*. | mTLS-terminating proxy. Lets clients reach a NAT'd controller. Always embedded in `coxswain`; optionally deployed remote. |
 | **Mobile client** | `caravel` | End-user device. | Runs the actual VPN tunnel + acquires profiles from multiple sources. |
 
-**Key inversion:** the controller *dials out* to everything. Buoys are already
+**Key inversion:** the controller *dials out* to everything. Nodes are already
 public (they must be, to terminate tunnels), so `coxswain` initiates outbound mTLS
-to each buoy. `coxswain` also dials *out* to a remote `beacon` (reverse tunnel), so
+to each node. `coxswain` also dials *out* to a remote `relay` (reverse tunnel), so
 the controller needs zero inbound ports anywhere.
 
-**`beacon` embedded vs remote.** A `beacon` relay always runs in-process inside
+**`relay` embedded vs remote.** A `relay` always runs in-process inside
 `coxswain` (toggleable off in the admin UI). When the controller sits behind NAT and
-must serve clients, deploy a **remote** `beacon` on a public host (its own VM, or
-co-located on a `buoy`); `coxswain` dials out to it over a persistent reverse
+must serve clients, deploy a **remote** `relay` on a public host (its own VM, or
+co-located on a `node`); `coxswain` dials out to it over a persistent reverse
 tunnel. Embedded and remote are transport differences only — identical trust.
 
 ---
@@ -99,18 +98,18 @@ tunnel. Embedded and remote are transport differences only — identical trust.
   peers, admins, sessions, the CA, audit log, metrics samples. See §10.
 - **Admin Web UI** — SvelteKit SPA embedded in the binary, served on localhost.
 - **Outbound control loop** — holds a long-lived mTLS/gRPC connection to each
-  `buoy`; pushes config, pushes/revokes peers, and *receives a live event
+  `node`; pushes config, pushes/revokes peers, and *receives a live event
   stream* (see §7).
-- **Node onboarding over SSH** — installs and updates the `buoy` agent on
+- **Node onboarding over SSH** — installs and updates the `node` agent on
   operator-provided VMs over SSH; all node *control* is gRPC. See §5. coxswain
   does not call cloud-provider APIs — the operator creates the VM.
 - **Issues** node certs, the controller's own client cert, relay certs, and
   per-user/device certs. Holds the CA. See §4.
-- **Embedded `beacon`** and the reverse-tunnel dialer for remote `beacon`s.
+- **Embedded `relay`** and the reverse-tunnel dialer for remote `relay`s.
 - **Account & sync service** — authenticates users/admins, serves E2E-encrypted
-  profile bundles (see §8). This surface is reached only via a `beacon`.
+  profile bundles (see §8). This surface is reached only via a `relay`.
 
-### buoy (VPN node agent)
+### node (VPN node agent)
 
 - **Stateless except for what `coxswain` gave it.** All config is written to disk
   only after `coxswain` pushes it over mTLS.
@@ -119,13 +118,13 @@ tunnel. Embedded and remote are transport differences only — identical trust.
   add/remove peer (live, no restart), handshake stats, restart service, and a
   **server-stream of live events** back to `coxswain`.
 - **SSH is install-only.** `coxswain` reaches a node over SSH solely to install and
-  update the `buoy` agent; every operational instruction is gRPC.
+  update the `node` agent; every operational instruction is gRPC.
 - **Cold-start resilient.** Comes up from disk every boot using the last config
   `coxswain` pushed. Controller offline ⇒ existing peers keep working.
 
 #### Node network policy
 
-Each node carries a **network policy** the operator sets per `buoy` from the
+Each node carries a **network policy** the operator sets per `node` from the
 admin UI — three independent toggles `coxswain` pushes over the control channel:
 
 | Toggle | Effect |
@@ -136,7 +135,7 @@ admin UI — three independent toggles `coxswain` pushes over the control channe
 
 Masquerade and isolation require forwarding. The toggles translate to a
 **canonical `PostUp` / `PostDown` rule set** — `coxswain` generates it, shows it
-read-only in an advanced UI panel, and pushes the policy; `buoy` applies the
+read-only in an advanced UI panel, and pushes the policy; `node` applies the
 same set (egress interface autodetected):
 
 ```
@@ -147,13 +146,13 @@ isolation    iptables -I FORWARD 1 -i %i -o %i -j DROP
 ```
 
 `PostDown` removes each with the matching `-D`. The rule set is the contract:
-`coxswain`'s preview and `buoy`'s application must not drift.
+`coxswain`'s preview and `node`'s application must not drift.
 
 #### Endpoint diversity & rotation
 
 A node does not expose a single address. It accepts AmneziaWG on a **set of
 public IPs** and a **UDP port range**, yielding a large pool of reachable
-`(ip, port)` endpoints from a small config (`buoy` binds the IPs and DNATs the
+`(ip, port)` endpoints from a small config (`node` binds the IPs and DNATs the
 port range onto the WireGuard listener). A profile carries that pool plus a
 **rotation policy** — `{ enabled, interval, jitter }`. The client picks a
 random endpoint and, when rotation is enabled, re-picks every
@@ -173,7 +172,7 @@ Endpoints are always represented as an **array**, even when a node has a single
 #### Node cascade (multi-hop)
 
 A client tunnel can traverse **more than one node** before reaching the
-internet: `client → entry buoy → [inner link] → exit buoy → internet`. This is
+internet: `client → entry node → [inner link] → exit node → internet`. This is
 the strongest form of the anti-correlation goal above — the **entry** node sees
 the client's address but never its destination, the **exit** node sees the
 destination but never the client's address, and **no single node correlates
@@ -185,11 +184,11 @@ the mapping.
 each other over an AmneziaWG tunnel (full throughput, and each hop inherits the
 per-node obfuscation). `coxswain` *authorizes and coordinates* the link over the
 existing mTLS control plane: it already holds every node's AmneziaWG public key
-(`GetStatus`), so it can make two `buoy`s peers of each other without either
+(`GetStatus`), so it can make two `node`s peers of each other without either
 node ever talking out of band. `coxswain` is the sole mesh coordinator.
 
 **The admin defines the graph; the client picks within it.** The operator
-chooses which `buoy`↔`buoy` edges exist (a `node_links` table, `version` +
+chooses which `node`↔`node` edges exist (a `node_links` table, `version` +
 `updated_at` like every row — §7, §10). A device's selectable exits are exactly
 the nodes reachable from its entry across that graph; `coxswain` gates the client's
 menu to that set. The model generalizes to arbitrary path length; the policy
@@ -197,13 +196,13 @@ menu to that set. The model generalizes to arbitrary path length; the policy
 
 **Exit selection is a control-plane act, out of band from the tunnel.**
 WireGuard has no in-band control channel, so the client never signals the exit
-*through* the tunnel. It asks `coxswain` over the `caravel → beacon → coxswain` channel
+*through* the tunnel. It asks `coxswain` over the `caravel → relay → coxswain` channel
 (§8); `coxswain` rebinds the routing on the entry node live. Two operations, with
 very different cost:
 
 | Operation | What changes | Client impact |
 |---|---|---|
-| **Switch exit** (same entry) | `coxswain` flips a server-side route on the entry `buoy` | none — same profile, no rehandshake, **instant** |
+| **Switch exit** (same entry) | `coxswain` flips a server-side route on the entry `node` | none — same profile, no rehandshake, **instant** |
 | **Switch entry** | new endpoint + server identity + obfuscation | profile update + tunnel re-establish |
 
 So a profile pins *which entry you handshake with*; the exit is a dial `coxswain`
@@ -240,15 +239,15 @@ only defends against a colluding/co-subpoenaed entry+exit pair. The cap is a
 provisioning guardrail, not a protocol constant.
 
 **Scope of v1.** The entry dials the exit's public AmneziaWG endpoint, so the
-exit must be publicly reachable; a NAT'd exit reached via the `beacon`
+exit must be publicly reachable; a NAT'd exit reached via the `relay`
 reverse-tunnel pattern is future work. Contract impact, to coordinate with
-`buoy`'s build before implementing: a `node_links` projection (§10), a
+`node`'s build before implementing: a `node_links` projection (§10), a
 `NodeControl` addition to bind a device-peer to an inner link, and the
 exit-selection surface in the `caravel ↔ coxswain` control API. It otherwise reuses
 `AddPeer` / `PushConfig` / `AmneziaWGConfig`, multi-endpoint (decision 17), and
 the network-policy rule set (decision 16).
 
-### beacon (relay)
+### relay (control-plane relay)
 
 - **Stateless public proxy.** Terminates client mTLS, forwards gRPC streams to
   `coxswain`. Holds no database; all lookups delegated to `coxswain`.
@@ -257,7 +256,7 @@ the network-policy rule set (decision 16).
 - Two transports to `coxswain`: **embedded** (in-process, in-memory pipe) or
   **remote reverse tunnel** (`coxswain` dials out, multiplexed substreams).
 - Carries only **ciphertext** profile bundles — see §8 — so a compromised remote
-  `beacon` host cannot read user profiles.
+  `relay` host cannot read user profiles.
 
 ### control-plane egress relaying (anti-observability)
 
@@ -275,11 +274,11 @@ clusters the whole fleet to a single network pivot. The data-plane cascade
 - **Protocol-blind.** Both control channels are already end-to-end secured
   (gRPC mTLS, SSH) between coxswain and the node, so the relay forwards **raw
   TCP** and terminates neither — one generic relay serves both channels. Simpler
-  than beacon's gRPC-aware *ingress* proxy: no message decoding, no metadata
+  than relay's gRPC-aware *ingress* proxy: no message decoding, no metadata
   handling — just `CONNECT host:port`, then byte-pump.
-- **Transport reuse, inverted.** Reuses the beacon reverse tunnel (`coxswain`
+- **Transport reuse, inverted.** Reuses the relay reverse tunnel (`coxswain`
   dials out, TLS-mutual-auth, yamux, auto-reconnecting) but with the substream
-  direction inverted: for **ingress** beacon opens substreams and coxswain
+  direction inverted: for **ingress** relay opens substreams and coxswain
   accepts; for **egress** *coxswain opens* a substream per outbound dial and the
   relay accepts it, reads the target, and dials the node. coxswain remains the
   dialer — zero inbound — in both.
@@ -344,8 +343,8 @@ identity nor the full path.
 A single in-repo **root CA**, generated on `coxswain`'s first run, stored in `coxswain`'s
 SQLite, never copied off the controller. Two intermediates under it:
 
-- **Fleet CA** — issues `buoy` node certs, the controller's client cert, and
-  `beacon` relay certs.
+- **Fleet CA** — issues `node` node certs, the controller's client cert, and
+  `relay` relay certs.
 - **Device CA** — issues per-user/per-device leaf certs for `caravel` and the
   admin browser.
 
@@ -354,15 +353,15 @@ SQLite, never copied off the controller. Two intermediates under it:
 | Root CA | self-signed | `coxswain` only | 10 years |
 | Fleet / Device intermediates | Root CA | `coxswain` only | 5 years |
 | Controller client cert | Fleet CA | `coxswain` | 1 year, auto-rotated |
-| Node server cert | Fleet CA | each `buoy` | 1 year, auto-rotated by push |
-| Relay cert | Fleet CA | each `beacon` | 1 year, auto-rotated |
+| Node server cert | Fleet CA | each `node` | 1 year, auto-rotated by push |
+| Relay cert | Fleet CA | each `relay` | 1 year, auto-rotated |
 | Device leaf | Device CA | each `caravel` / browser | 1 year |
 | coxswain SSH key | `coxswain` (self) | `coxswain` | long-lived, for agent deploy |
 
 **Compromise containment:**
-- Compromised `buoy` → attacker gets that node's key + the CA *cert* (not key).
+- Compromised `node` → attacker gets that node's key + the CA *cert* (not key).
   Cannot impersonate `coxswain` or other nodes. Operator revokes the node cert.
-- Compromised remote `beacon` → attacker can see *traffic metadata* but profile
+- Compromised remote `relay` → attacker can see *traffic metadata* but profile
   bundles are E2E-encrypted ciphertext (§8). Cannot mint certs.
 - Compromised `coxswain` → attacker gets the CA key. Fleet fully compromised — but
   user **profiles remain encrypted** (the controller never holds users' private
@@ -373,7 +372,7 @@ SQLite, never copied off the controller. Two intermediates under it:
 (Curve25519) is quantum-vulnerable; the symmetric PSK is not — so recorded
 tunnel traffic stays confidential against a future *harvest-now-decrypt-later*
 attacker. `coxswain` generates the PSK per peer, ships it inside the E2E profile
-bundle (§8), and pushes it to `buoy`. This is a pragmatic interim measure, not
+bundle (§8), and pushes it to `node`. This is a pragmatic interim measure, not
 a full post-quantum handshake.
 
 ---
@@ -385,22 +384,22 @@ a full post-quantum handshake.
    key** (printed by `cox ssh-key`) to its `authorized_keys`. `coxswain` has its
    own SSH keypair, generated on first run and stored in SQLite.
 2. `coxswain` connects out over SSH, pins the host key on first use (TOFU), and
-   installs the `buoy` agent — either by uploading a bundled binary or running
+   installs the `node` agent — either by uploading a bundled binary or running
    a one-line download.
-3. `buoy` generates its own keypair **on the node** and emits a CSR. `coxswain`
+3. `node` generates its own keypair **on the node** and emits a CSR. `coxswain`
    pulls the CSR back over SSH, signs it with the Fleet CA, and pushes the
    certificate plus the CA back. The node's private key never leaves the node
    and `coxswain` never holds it.
-4. `coxswain` starts the `buoy` service. From here every instruction is gRPC.
+4. `coxswain` starts the `node` service. From here every instruction is gRPC.
 
 SSH is a *deployment* channel only — install and update of the agent. There is
 no enrollment-mode listener and no one-time bootstrap token; the trusted SSH
 channel replaces both.
 
-**Relay enrollment** — same SSH pattern for a remote `beacon`.
+**Relay enrollment** — same SSH pattern for a remote `relay`.
 
 **User / device enrollment** — a user is given an **enrollment ticket** (QR or
-deep link, see §9). `caravel` scans it, contacts `beacon`→`coxswain`, the device
+deep link, see §9). `caravel` scans it, contacts `relay`→`coxswain`, the device
 generates a keypair, `coxswain` issues a Device-CA leaf, and the device is bound to
 the user account. The enrollment ticket is the only moment of weakness: short
 TTL, one-use, scoped.
@@ -425,8 +424,8 @@ clients too.
 The admin UI must feel **live** — a client connecting to a node appears
 immediately, not on a 30-second poll.
 
-- **`buoy` → `coxswain`:** `coxswain` holds its outbound mTLS connection open and the
-  buoy **streams events** (handshake up/down, peer connect/disconnect, errors)
+- **`node` → `coxswain`:** `coxswain` holds its outbound mTLS connection open and the
+  node **streams events** (handshake up/down, peer connect/disconnect, errors)
   over a gRPC server-stream. Polling remains only as a fallback heartbeat.
 - **`coxswain` → browser:** every open admin page holds a WebSocket. `coxswain` pushes
   state changes to all of them — open the dashboard on three machines, all three
@@ -458,14 +457,14 @@ unsynced" is just which sources are enabled, not two apps:
 
 | Source | Audience | Mechanism |
 |---|---|---|
-| Account sync | Personal | login → `beacon`→`coxswain` → pull, E2E-decrypt on device |
+| Account sync | Personal | login → `relay`→`coxswain` → pull, E2E-decrypt on device |
 | QR scan | Anyone | scan an enrollment ticket or a self-contained profile QR |
 | File import | Anyone | open a `.pharos` file (Mail/Files/AirDrop/portal) |
 | MDM managed config | Enterprise | MDM pushes profiles + policy into managed config |
 | Deep link | Portal-driven | `pharosvpn://import?...` |
 
-The account/sync service + `beacon` are an **optional platform component**: an
-enterprise doing only MDM/QR runs no `beacon` and no account service.
+The account/sync service + `relay` are an **optional platform component**: an
+enterprise doing only MDM/QR runs no `relay` and no account service.
 
 ### End-to-end profile encryption
 
@@ -557,7 +556,7 @@ Tables: `ca` (the root + intermediate CAs, §4), `nodes`, `profiles`, `users`,
 `bootstrap_tokens`, `audit_log`, `metrics_samples`, `relays`. **Every mutable
 row carries `version INTEGER` and `updated_at`** for
 §7 optimistic concurrency. YAML projections under `state/snapshots/` continue
-for git-friendly diffs. `buoy` and `beacon` have no database.
+for git-friendly diffs. `node` and `relay` have no database.
 
 ---
 
@@ -565,13 +564,13 @@ for git-friendly diffs. `buoy` and `beacon` have no database.
 
 | Failure | Behaviour |
 |---|---|
-| `coxswain` crashes | All buoys keep serving tunnels. No new peers until back. |
-| `coxswain` ↔ buoy unreachable | Buoy keeps serving. `coxswain` marks `unreachable` after 3 missed polls, alerts, retries with backoff. |
-| `buoy` crashes | Its tunnels drop. Clients fail over to other nodes in the profile. |
-| `buoy` compromised | Attacker has that node's keys, not the CA key. Operator revokes the cert. |
-| Remote `beacon` compromised | Traffic metadata exposed; profile bundles are ciphertext. No cert minting. |
+| `coxswain` crashes | All nodes keep serving tunnels. No new peers until back. |
+| `coxswain` ↔ node unreachable | Node keeps serving. `coxswain` marks `unreachable` after 3 missed polls, alerts, retries with backoff. |
+| `node` crashes | Its tunnels drop. Clients fail over to other nodes in the profile. |
+| `node` compromised | Attacker has that node's keys, not the CA key. Operator revokes the cert. |
+| Remote `relay` compromised | Traffic metadata exposed; profile bundles are ciphertext. No cert minting. |
 | `coxswain` compromised | Worst case. CA key lost → rotate CA, mass re-enroll. User profiles stay encrypted. |
-| Account service / `beacon` down | `caravel` connects from cached local profiles. |
+| Account service / `relay` down | `caravel` connects from cached local profiles. |
 
 ---
 
@@ -584,7 +583,7 @@ Same binaries, two presets at `cox init`:
 | Regions | 1, nearest | operator picks |
 | Idle nodes | none | encouraged (pre-positioned, stopped) |
 | Protocols | AmneziaWG default, XRay optional | both |
-| `beacon` | embedded | embedded + remote relays |
+| `relay` | embedded | embedded + remote relays |
 | Account sync | on | optional (MDM-only deployments run none) |
 | Admins | one (the operator) | core admin + UI-added others |
 | Audit retention | 30 days | 1 year |
@@ -618,12 +617,12 @@ Same binaries, two presets at `cox init`:
 |---|---|---|---|
 | `docs` | This document, `BUILD.md`, protobuf contracts | Markdown / proto | core |
 | `coxswain` | Controller / management plane + admin UI | Go + SvelteKit | core (you + Claude) |
-| `buoy` | VPN node agent | Go | subagent |
-| `beacon` | Relay | Go | subagent |
+| `node` | VPN node agent | Go | subagent |
+| `relay` | Control-plane relay | Go | subagent |
 | `caravel` | Mobile client | native (Kotlin / Swift) | subagent |
 | `.github` | Org profile | Markdown | core |
 
-`buoy` and `beacon` adapt and **rebrand** reverse-tunnel, transparent-proxy,
+`node` and `relay` adapt and **rebrand** reverse-tunnel, transparent-proxy,
 and device-CA machinery the operator wrote for an earlier private project.
 Every identifier from that origin is stripped — the repos carry zero trace of
 it.
@@ -637,9 +636,9 @@ it.
 | 1 | Name: PharosVPN. Org `github.com/PharosVPN`. | 2026-05-17 |
 | 2 | License Apache-2.0 + DCO, no CLA. | 2026-05-17 |
 | 3 | Wire protocol: gRPC over mTLS (not plain JSON). | 2026-05-17 |
-| 4 | Three roles: `coxswain` / `buoy` / `beacon`; client `caravel`. | 2026-05-17 |
-| 5 | `beacon` always embedded in `coxswain`, optionally remote. | 2026-05-17 |
-| 6 | Live UI: buoy→coxswain event stream + coxswain→browser WebSocket. | 2026-05-17 |
+| 4 | Three roles: `coxswain` / `node` / `relay`; client `caravel`. | 2026-05-17 |
+| 5 | `relay` always embedded in `coxswain`, optionally remote. | 2026-05-17 |
+| 6 | Live UI: node→coxswain event stream + coxswain→browser WebSocket. | 2026-05-17 |
 | 7 | Optimistic concurrency: per-row `version`, 409 on stale write. | 2026-05-17 |
 | 8 | Per-user E2E profile encryption; hybrid envelope. | 2026-05-17 |
 | 9 | Private key: passphrase-wrapped blob on `coxswain` (Argon2id). | 2026-05-17 |
@@ -649,10 +648,10 @@ it.
 | 13 | Reuse + rebrand relay/tunnel/device-CA code from an earlier private project; all origin identifiers stripped. | 2026-05-17 |
 | 14 | Node/relay onboarding over SSH (agent install + update); no cloud-provider API. Node keys are generated on-node and signed via CSR; no bootstrap token. Supersedes the §3 `CloudProvider` interface. | 2026-05-18 |
 | 15 | Per-peer 256-bit AmneziaWG preshared keys, for post-quantum (harvest-now-decrypt-later) hardening of the data plane. See §4. | 2026-05-19 |
-| 16 | Per-node network policy — forwarding / masquerade / client-isolation toggles, set per `buoy` from the admin UI. See §3. | 2026-05-19 |
+| 16 | Per-node network policy — forwarding / masquerade / client-isolation toggles, set per `node` from the admin UI. See §3. | 2026-05-19 |
 | 17 | Multi-IP/port node endpoints + client-side endpoint rotation, for anti-correlation. Endpoints are always an array. Rotation default off (personal) / on (enterprise). See §3. | 2026-05-19 |
 | 18 | Node cascade (multi-hop): client→entry→exit over mTLS-authorized inner AmneziaWG links. coxswain coordinates the mesh; admin defines the graph, client picks an exit out-of-band via the control channel. Exit-switch is a live server-side route flip (no profile change); client only ever handshakes with the entry. 2 hops default, 3 max, gated by computed MTU ≥ 1280. See §3. | 2026-05-29 |
-| 19 | Control-plane egress relaying: route coxswain's outbound channels (gRPC NodeControl + SSH) through a protocol-blind raw-TCP relay so nodes never see coxswain's IP. Reuses the beacon reverse tunnel with the substream direction inverted (coxswain opens). Fixed hop path; one DialContext chokepoint for both channels; v1 = single relay, N-relay chain and onion deferred. See §3. | 2026-06-02 |
+| 19 | Control-plane egress relaying: route coxswain's outbound channels (gRPC NodeControl + SSH) through a protocol-blind raw-TCP relay so nodes never see coxswain's IP. Reuses the relay reverse tunnel with the substream direction inverted (coxswain opens). Fixed hop path; one DialContext chokepoint for both channels; v1 = single relay, N-relay chain and onion deferred. See §3. | 2026-06-02 |
 | 20 | Control-plane onion routing (egress relaying ladder step 3): layered per-hop AEAD over the egress chain so each relay decrypts only its own layer — it sees only its neighbours, never coxswain's identity or the full path, defeating a coerced relay. Single-pass circuit setup by encrypting each layer to the relay's enrolled X25519 onion key (no telescoping). Fixed path, control-plane only; the first relay still sees coxswain's IP but not its identity. See §3. | 2026-06-02 |
 
 ### Still open

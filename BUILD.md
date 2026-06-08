@@ -17,7 +17,7 @@ subproject must read, in order: this file → `docs/DESIGN.md` → the subprojec
 
 ## 2. Languages & versions
 
-- **`coxswain`, `buoy`, `beacon`** — Go (latest stable, currently 1.25.x).
+- **`coxswain`, `node`, `relay`** — Go (latest stable, currently 1.25.x).
   Module paths: `github.com/PharosVPN/<repo>`.
 - **`coxswain` admin UI** — SvelteKit 2 + Svelte 5, TypeScript, Tailwind. Built to
   static assets, embedded in the Go binary via `//go:embed`.
@@ -35,7 +35,7 @@ subproject must read, in order: this file → `docs/DESIGN.md` → the subprojec
 
 ## 4. Reused code — rebrand obligation
 
-`buoy` and `beacon` adapt the reverse-tunnel, transparent-proxy, and device-CA
+`node` and `relay` adapt the reverse-tunnel, transparent-proxy, and device-CA
 machinery the operator wrote for an earlier private project. When adapting it:
 
 - Strip **every** identifier from the origin project — package names, import
@@ -77,6 +77,6 @@ machinery the operator wrote for an earlier private project. When adapting it:
 ## 8. Security posture (non-negotiable)
 
 - `coxswain` opens **no inbound ports**. All connections are coxswain-initiated outbound.
-- `buoy` and `beacon` accept only mTLS; certs must chain to the in-repo CA.
-- `beacon` never sees plaintext profile bundles — only `account`-mode ciphertext.
+- `node` and `relay` accept only mTLS; certs must chain to the in-repo CA.
+- `relay` never sees plaintext profile bundles — only `account`-mode ciphertext.
 - User private keys never exist in usable form on `coxswain` (see DESIGN §8).
