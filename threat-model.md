@@ -84,12 +84,11 @@ nested-TLS egress → onion routing (relay-operator-resistant).
    Cascades raise the bar but do not defeat a global adversary.
 4. **Exit visibility.** The exit node sees your destinations (not who you are, in
    an unlinkable deployment). Don't send plaintext secrets over any VPN.
-5. **Enrollment SAN handling (code hardening).** `pki.SignNodeCSR` currently
-   *includes the SANs requested in the CSR* (in addition to the address coxswain
-   pins itself). In the current SSH-driven enrollment the controller generates
-   the CSR, so SANs are not attacker-chosen — but the signer should **assign**
-   SANs (as `SignRelayCSR` already does) rather than copy them, before any flow
-   accepts a CSR from an untrusted party. Tracked hardening item.
+5. **Enrollment SAN handling — FIXED (v0.3.0).** `pki.SignNodeCSR` previously
+   *included the SANs requested in the CSR*. It now **assigns** controller-pinned
+   SANs and Subject (like `SignRelayCSR`) and drops the CSR's own SANs entirely, so
+   a node cannot assert an identity it was not granted. Node mTLS (Fleet-CA chain +
+   pinned SAN) is unaffected; existing node certs remain valid until renewal.
 
 ## What PharosVPN does NOT protect against
 
